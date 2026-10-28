@@ -1,0 +1,45 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: chrome
+      changes:
+        - createTable:
+            tableName: prices
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: symbol
+                  type: varchar(20)
+              - column:
+                  name: price
+                  type: numeric(20, 8)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: close_time
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fetched_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: prices
+            columnNames: symbol, close_time
+            constraintName: uk_prices_symbol_close_time
+  - changeSet:
+      id: 2
+      author: chrome
+      changes:
+        - addNotNullConstraint:
+            tableName: prices
+            columnName: symbol
+            columnDataType: varchar(20)
