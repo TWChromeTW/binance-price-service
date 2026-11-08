@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,4 +24,8 @@ public interface PriceRepository extends JpaRepository<Price, Long> {
     )
     Optional<BigDecimal> getAveragePriceBetween(@Param("from") Instant from, @Param("to") Instant to, @Param("symbol") String symbol);
 
+    Page<Price> findAllBySymbolAndFetchedAtBetween(String symbol, Instant from, Instant to, Pageable pageable);
+
+    Optional<Price> findFirstBySymbolAndFetchedAtBetweenOrderByFetchedAtAscIdAsc(String symbol, Instant from, Instant to);
+    Optional<Price> findFirstBySymbolAndFetchedAtBetweenOrderByFetchedAtDescIdDesc(String symbol, Instant from, Instant to);
 }
