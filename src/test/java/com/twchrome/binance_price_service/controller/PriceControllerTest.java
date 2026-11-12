@@ -1,19 +1,21 @@
-package com.twchrome.binance_price_service.service;
+package com.twchrome.binance_price_service.controller;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.Pageable;
@@ -24,13 +26,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-
-import com.twchrome.binance_price_service.controller.PriceController;
 import com.twchrome.binance_price_service.dto.AveragePriceResponse;
 import com.twchrome.binance_price_service.dto.PageablePriceResponse;
 import com.twchrome.binance_price_service.dto.PriceResponse;
 import com.twchrome.binance_price_service.dto.Trend;
 import com.twchrome.binance_price_service.dto.TrendResponse;
+import com.twchrome.binance_price_service.service.PriceQueryService;
 
 @WebMvcTest(PriceController.class)
 public class PriceControllerTest {
@@ -55,7 +56,7 @@ public class PriceControllerTest {
     }
 
     @Test
-    void latestReturnsOptionalEmpty() throws Exception {
+    void latestReturnsNotFoundWhenNoRecords() throws Exception {
         when(service.findLatest())
             .thenReturn(Optional.empty());
         
@@ -80,7 +81,7 @@ public class PriceControllerTest {
     }
 
     @Test
-    void averageReturnsBadRequestWhenFromIsHigherThenTo() throws Exception { 
+    void averageReturnsBadRequestWhenFromIsAfterTo() throws Exception {
         Instant from = Instant.parse("2026-11-02T00:00:00Z");
         Instant to = Instant.parse("2026-11-01T00:00:00Z");
 
@@ -89,10 +90,66 @@ public class PriceControllerTest {
             .param("to", to.toString())
             )
             .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(service);
     }
 
     @Test
-    void trendReturnsCorrectStringNames() throws Exception {
+    void averageReturnsNotFoundWhenNoData() throws Exception {
+        Instant from = Instant.parse("2026-11-01T00:00:00Z");
+        Instant to = Instant.parse("2026-11-02T00:00:00Z");
+
+        when(service.avgPriceBetween(from, to))
+            .thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/prices/average")
+            .param("from", from.toString())
+            .param("to", to.toString())
+            )
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void averageReturnsBadRequestWhenToIsMissing() throws Exception {
+        Instant from = Instant.parse("2026-11-01T00:00:00Z");
+
+        mockMvc.perform(get("/api/v1/prices/average")
+            .param("from", from.toString())
+            )
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void trendReturnsNotFoundWhenNoData() throws Exception {
+        Instant from = Instant.parse("2026-11-01T00:00:00Z");
+        Instant to = Instant.parse("2026-11-02T00:00:00Z");
+
+        when(service.getTrendNotes(from, to))
+            .thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/prices/trend")
+            .param("from", from.toString())
+            .param("to", to.toString())
+            )
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void trendReturnsBadRequestWhenToIsMissing() throws Exception {
+        Instant from = Instant.parse("2026-11-01T00:00:00Z");
+
+        mockMvc.perform(get("/api/v1/prices/trend")
+            .param("from", from.toString())
+            )
+            .andExpect(status().isBadRequest());
+        
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void trendReturnsExpectedJsonFieldsAndValues() throws Exception {
         Instant from = Instant.parse("2026-11-01T00:00:00Z");
         Instant to = Instant.parse("2026-11-02T00:00:00Z");
 
@@ -110,15 +167,13 @@ public class PriceControllerTest {
             )
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.symbol").value("BNBUSDT"))
-            .andExpect(jsonPath("$.start_date").isString())
             .andExpect(jsonPath("$.start_date").value("2026-11-01"))
-            .andExpect(jsonPath("$.end_date").isString())
             .andExpect(jsonPath("$.end_date").value("2026-11-02"))
             .andExpect(jsonPath("$.trend").value("UPWARD"));
     }
 
     @Test
-    void trendReturnBadRequestWhenFromIsHigherThenTo() throws Exception {
+    void trendReturnsBadRequestWhenFromIsAfterTo() throws Exception {
         Instant from = Instant.parse("2026-11-02T00:00:00Z");
         Instant to = Instant.parse("2026-11-01T00:00:00Z");
 
@@ -127,6 +182,8 @@ public class PriceControllerTest {
             .param("to", to.toString())
             )
             .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(service);
     }
 
     @Test
@@ -196,28 +253,34 @@ public class PriceControllerTest {
         assertEquals(20, pageableCaptor.getValue().getPageSize());
     }
 
-    @Test
-    void pageRejectsInvalidPageAndSize() throws Exception {
+    @ParameterizedTest
+    @CsvSource({
+        "page, -1",
+        "size, 0",
+        "size, 1001",
+        "size, abc"
+    })
+    void pageRejectsInvalidParameters(String name, String value) throws Exception {
         String from = "2026-11-01T00:00:00Z";
         String to = "2026-11-02T00:00:00Z";
 
         mockMvc.perform(get("/api/v1/prices")
                 .param("from", from)
                 .param("to", to)
-                .param("page", "-1"))
+                .param(Objects.requireNonNull(name), Objects.requireNonNull(value)))
             .andExpect(status().isBadRequest());
 
-        mockMvc.perform(get("/api/v1/prices")
-                .param("from", from)
-                .param("to", to)
-                .param("size", "0"))
-            .andExpect(status().isBadRequest());
+        verifyNoInteractions(service);
+    }
 
+    @Test
+    void pageRejectsSizeAboveMaximumWithDetail() throws Exception {
         mockMvc.perform(get("/api/v1/prices")
-                .param("from", from)
-                .param("to", to)
+                .param("from", "2026-11-01T00:00:00Z")
+                .param("to", "2026-11-02T00:00:00Z")
                 .param("size", "1001"))
-            .andExpect(status().isBadRequest());
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.detail").value("'size' must be <= 1000"));
 
         verifyNoInteractions(service);
     }
