@@ -11,21 +11,8 @@
 	<groupId>com.twchrome</groupId>
 	<artifactId>binance-price-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+	<name>Binance Price Service</name>
+	<description>Scheduled Binance average-price collector with a PostgreSQL-backed REST API.</description>
 	<properties>
 		<java.version>21</java.version>
 	</properties>
@@ -55,6 +42,16 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>postgresql</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

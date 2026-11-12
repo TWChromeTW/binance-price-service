@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 3
+      author: chrome
+      changes:
+        - createIndex:
+            tableName: prices
+            indexName: idx_prices_symbol_fetched_at
+            columns:
+              - column:
+                  name: symbol
+              - column:
+                  name: fetched_at
